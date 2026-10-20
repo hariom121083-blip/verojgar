@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ChannelPage from "./ChannelPage";
 import {
   Search, Play, Upload, UserRound, MapPin, Sparkles, Menu, X,
   LogOut, Radio, BookOpen, Users, ChevronRight, Clock3, CheckCircle2,
-  Video, Plus, ArrowLeft, Mail, ShieldCheck, Building2
+  Video, Plus, ArrowLeft, Mail, ShieldCheck, Building2, Trash2
 } from "lucide-react";
 import { supabase, supabaseConfigured } from "./supabaseClient";
 
@@ -94,18 +95,33 @@ function VideoCard({v,onOpen,onDelete,user}) {
      <button
   type="button"
   style={{
-    background: "#dc2626",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "8px",
-    padding: "9px 14px",
-    marginTop: "10px",
-    cursor: "pointer",
-    fontWeight: "600"
-  }}
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "7px",
+  background: "rgba(244, 63, 94, 0.08)",
+  color: "#e11d48",
+  border: "1px solid rgba(244, 63, 94, 0.18)",
+  borderRadius: "12px",
+  padding: "9px 15px",
+  marginTop: "12px",
+  cursor: "pointer",
+  fontFamily: "Inter, 'Noto Sans Devanagari', sans-serif",
+  fontSize: "13px",
+  fontFamily: "Inter, sans-serif",
+  letterSpacing: "0.2px",
+  boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
+  fontFamily: "'Inter', sans-serif",
+fontSize: "12px",
+fontWeight: 700,
+letterSpacing: "0.6px",
+textTransform: "uppercase",
+transition: "all 0.2s ease"
+}}
   onClick={(e)=>{e.stopPropagation();onDelete(v);}}
 >
-  🗑️ Delete Video
+ <Trash2 size={15} strokeWidth={1.8} />
+<span>Delete</span>
 </button>
    )}
  </article>
@@ -155,6 +171,9 @@ function Field({label,type="text",value,onChange,placeholder,icon}){ return <lab
 
 function UploadPanel({user,onBack,onUploaded}) {
  const [title,setTitle]=useState(""); const [description,setDescription]=useState(""); const [field,setField]=useState("Mobile Repairing"); const [city,setCity]=useState("Shivpuri"); const [file,setFile]=useState(null); const [thumb,setThumb]=useState(null); const [loading,setLoading]=useState(false); const [msg,setMsg]=useState("");
+ const [uploadType, setUploadType] = useState("video");
+const [recordedVideo, setRecordedVideo] = useState(null);
+
  async function upload(e){
    e.preventDefault(); if(!file){setMsg("पहले video file चुनें।");return;}
    if(!supabaseConfigured){setMsg("Demo mode में upload disabled है। Supabase connect करने के बाद real upload होगा.");return;}
@@ -164,13 +183,78 @@ function UploadPanel({user,onBack,onUploaded}) {
    const up=await supabase.storage.from("videos").upload(path,file,{contentType:file.type});
    if(up.error){setMsg(up.error.message);setLoading(false);return;}
    const {data:urlData}=supabase.storage.from("videos").getPublicUrl(path);
-   const {data,error}=await supabase.from("videos").insert({title,description,field,city,video_url:urlData.publicUrl,creator_id:user.id}).select().single();
+   const {data,error}=await supabase.from("videos").insert({title,description,field,city,video_url:urlData.publicUrl,video_type: uploadType,creator_id:user.id}).select().single();
    if(error){setMsg(error.message)} else {setMsg("Video upload हो गया!");onUploaded?.(data);}
    setLoading(false);
  }
  return <div className="upload-page"><button className="back-btn" onClick={onBack}><ArrowLeft size={18}/> Back</button>
   <div className="upload-wrap"><div className="section-heading"><div className="eyebrow"><Upload size={15}/> Creator Studio</div><h1>अपना हुनर upload करें</h1><p>एक अच्छा title, field और city डालें ताकि सही learners तक आपका video पहुंचे।</p></div>
   <form className="upload-card" onSubmit={upload}><div className="upload-drop"><Upload size={36}/><h3>{file?file.name:"Video चुनें"}</h3><p>MP4/WebM recommended · large videos may take time</p><input type="file" accept="video/*" onChange={e=>setFile(e.target.files?.[0]||null)}/></div>
+  <div className="two">
+  <button
+    type="button"
+    className={uploadType === "video" ? "primary" : "back-btn"}
+    onClick={() => setUploadType("video")}
+  >
+    Upload Video
+  </button>
+
+  <button
+    type="button"
+    className={uploadType === "short" ? "primary" : "back-btn"}
+    onClick={() => setUploadType("short")}
+  >
+    Upload Shorts
+  </button>
+</div>
+<div className="two">
+  <button
+    type="button"
+    className="primary"
+    onClick={() => document.getElementById("cameraInput")?.click()}
+  >
+    📷 Record Video / Shorts
+  </button>
+
+  <input
+    id="cameraInput"
+    type="file"
+    accept="video/*"
+    capture="environment"
+    style={{ display: "none" }}
+    onChange={(e) => {
+      const selectedFile = e.target.files?.[0];
+      if (selectedFile) {
+        setFile(selectedFile);
+        setUploadType("video");
+      }
+    }}
+  />
+</div>
+<div className="two">
+  <button
+    type="button"
+    className="back-btn"
+    onClick={() => document.getElementById("cameraInput")?.click()}
+  >
+    📷 Record Video / Shorts
+  </button>
+
+  <input
+    id="cameraInput"
+    type="file"
+    accept="video/*"
+    capture="environment"
+    style={{ display: "none" }}
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        setFile(file);
+        setUploadType("video");
+      }
+    }}
+  />
+</div>
    <div className="two"><Field label="Video Title" value={title} onChange={e=>setTitle(e.target.value)} placeholder="जैसे: Mobile Repairing - Charging Pin बदलना"/><label className="field"><span>Skill / Field</span><select value={field} onChange={e=>setField(e.target.value)}>{fields.slice(1).map(f=><option key={f}>{f}</option>)}</select></label></div>
    <div className="two"><Field label="City" value={city} onChange={e=>setCity(e.target.value)} placeholder="Shivpuri"/><label className="field"><span>Thumbnail (optional)</span><input type="file" accept="image/*" onChange={e=>setThumb(e.target.files?.[0]||null)}/></label></div>
    <label className="field"><span>Description</span><textarea rows="5" value={description} onChange={e=>setDescription(e.target.value)} placeholder="इस video में learner क्या सीखेगा?"></textarea></label>
@@ -196,6 +280,8 @@ function LiveSection({onLogin}) {
 
 export default function App(){
  const [screen,setScreen]=useState("home"); const [search,setSearch]=useState(""); const [field,setField]=useState("All Fields"); const [city,setCity]=useState("All Cities"); const [videos,setVideos]=useState(demoVideos); const [user,setUser]=useState(null); const [selected,setSelected]=useState(null);
+ const [channelCreated, setChannelCreated] = useState(false);
+ const [profile, setProfile] = useState(null);
  useEffect(()=>{
    if(!supabaseConfigured)return;
    supabase.auth.getSession().then(({data})=>setUser(data.session?.user||null));
@@ -208,6 +294,24 @@ export default function App(){
      if(data?.length)setVideos(data.map(v=>({...v,creator:v.profiles?.name||"Verojgar Teacher",views:v.views||0,image:v.thumbnail_url})));
    });
  },[]);
+ useEffect(() => {
+  if (!supabaseConfigured || !user) {
+    setProfile(null);
+    return;
+  }
+
+  async function loadProfile() {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    setProfile(data || null);
+  }
+
+  loadProfile();
+}, [user]);
  const filtered=useMemo(()=>videos.filter(v=>{
    const q=search.toLowerCase();
    return (!q || `${v.title} ${v.creator} ${v.field} ${v.city}`.toLowerCase().includes(q))
@@ -215,14 +319,109 @@ export default function App(){
  }),[videos,search,field,city]);
  async function logout(){ if(supabaseConfigured) await supabase.auth.signOut(); setUser(null); setScreen("home");}
  const goUpload=()=>setScreen("upload");
+ const goChannel = () => setScreen("channel");
  return <div className="app">
    <Header onLogin={()=>setScreen("login")} onUpload={goUpload} onHome={()=>setScreen("home")} user={user} onLogout={logout} search={search} setSearch={setSearch}/>
    {screen==="login"&&<Login onBack={()=>setScreen("home")} onSuccess={()=>setScreen("home")}/>}
    {screen==="upload"&&<UploadPanel user={user} onBack={()=>setScreen("home")} onUploaded={v=>{setVideos([v,...videos]);setScreen("home")}}/>}
+    {screen === "channel" && (
+  <ChannelPage
+    user={user}
+    profile={profile}
+    videos={videos}
+    onBack={() => setScreen("home")}
+    onUpload={goUpload}
+    onEditProfile={() => setScreen("editProfile")}
+    onOpenVideo={(video) => {
+      setSelected(video);
+      setScreen("watch");
+    }}
+  />
+)}
+{screen === "editProfile" && (
+  <div className="container" style={{ padding: "30px 0" }}>
+    <div style={{
+      maxWidth: "600px",
+      margin: "0 auto",
+      padding: "28px",
+      background: "#111827",
+      color: "#f8fafc",
+      border: "1px solid #263449",
+      borderRadius: "20px"
+    }}>
+      <h1>Edit Profile</h1>
+      <p style={{ color: "#94a3b8" }}>
+        अपनी प्रोफाइल की जानकारी अपडेट करें।
+      </p>
+
+      <form onSubmit={async (e) => {
+        e.preventDefault();
+
+        const form = e.currentTarget;
+        const values = {
+          name: form.elements.name.value,
+          city: form.elements.city.value,
+          bio: form.elements.bio.value,
+          field: form.elements.field.value
+        };
+
+        const { error } = await supabase
+          .from("profiles")
+          .upsert({ id: user.id, ...values });
+
+        if (error) {
+          alert("Profile सेव नहीं हुई: " + error.message);
+        } else {
+          setProfile({ ...profile, ...values });
+          alert("Profile सेव हो गई!");
+          setScreen("channel");
+        }
+      }} style={{ display: "grid", gap: "16px" }}>
+
+        <label>
+          नाम
+          <input name="name" defaultValue={profile?.name || ""}
+            required style={{ display: "block", width: "100%", padding: "12px", marginTop: "6px" }} />
+        </label>
+
+        <label>
+          शहर
+          <input name="city" defaultValue={profile?.city || ""}
+            style={{ display: "block", width: "100%", padding: "12px", marginTop: "6px" }} />
+        </label>
+
+        <label>
+          Skill / Field
+          <input name="field" defaultValue={profile?.field || ""}
+            style={{ display: "block", width: "100%", padding: "12px", marginTop: "6px" }} />
+        </label>
+
+        <label>
+          परिचय (Bio)
+          <textarea name="bio" defaultValue={profile?.bio || ""}
+            rows="4" style={{ display: "block", width: "100%", padding: "12px", marginTop: "6px" }} />
+        </label>
+
+        <button type="submit" style={{
+          background: "#2563eb", color: "white", border: 0,
+          borderRadius: "10px", padding: "13px", cursor: "pointer",
+          fontWeight: 700
+        }}>
+          Save Profile
+        </button>
+
+        <button type="button" onClick={() => setScreen("channel")}
+          style={{ padding: "12px", cursor: "pointer" }}>
+          Cancel
+        </button>
+      </form>
+    </div>
+  </div>
+)}
    {screen==="watch"&&selected&&<Watch video={selected} onBack={()=>setScreen("home")}/>}
    {screen==="home"&&<>
     <main>
-     <Hero onExplore={()=>document.getElementById("library")?.scrollIntoView({behavior:"smooth"})} onCreate={goUpload}/>
+    <Hero onExplore={()=>document.getElementById("library")?.scrollIntoView({behavior:"smooth"})} onCreate={goChannel}/>
      <div className="container" id="library"><div className="section-heading"><div className="eyebrow"><BookOpen size={15}/> SKILL LIBRARY</div><h2>आज क्या सीखना है?</h2><p>Skill, teacher और city के आधार पर practical videos खोजें।</p></div>
      <FilterBar field={field} setField={setField} city={city} setCity={setCity}/>
      {filtered.length?<VideoGrid videos={filtered} onOpen={v=>{setSelected(v);setScreen("watch")}} user={user} onDelete={async (v)=>{if(!window.confirm("क्या आप यह वीडियो डिलीट करना चाहते हैं?"))return;const {error}=await supabase.from("videos").delete().eq("id",v.id).eq("creator_id",user.id);if(error){alert("वीडियो डिलीट नहीं हुआ: "+error.message);return;}setVideos(prev=>prev.filter(item=>item.id!==v.id));alert("वीडियो डिलीट हो गया");}}/>:<div className="empty"><Search size={35}/><h3>कोई video नहीं मिला</h3><p>दूसरी skill या city चुनकर देखें।</p></div>}
